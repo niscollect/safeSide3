@@ -1,0 +1,237 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+
+    <style>
+        #map {
+            width: 75vh;
+            height: 70vh;
+            background-color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map">
+
+    </div>
+
+
+
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+
+    <script type="module">
+        import { getLat, getLong, getLastUpdate } from "./back.js";
+
+
+        const lat = getLat();
+        const long = getLong();
+        
+        const lastUpdate = getLastUpdate();
+
+        console.log(lat, "->", long);
+
+        var map = L.map('map', {
+            center: [lat, long],
+            zoom: 33
+        });
+
+        var osm= L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+        osm.addTo(map);
+
+        L.marker([lat, long]).addTo(map)
+            .bindPopup('A pretty CSS popup.<br> Easily customizable.')
+            .openPopup();
+
+        var circle = L.circle([lat, long], {radius: 2})
+        //real time location finder
+        
+
+    </script>
+</body>
+
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <!-- leaflet css -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <style>
+        #map {
+            width: 75vh;
+            height: 70vh;
+            background-color: red;
+        }
+
+        #lastUpdate {
+            margin: 10px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="lastUpdate"></div>
+    <div id="map"></div>
+
+    <!-- leaflet js -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- <script type="module" src="../services/mapLocation.js"></script> -->
+    <script type="module">
+        // import { getLat, getLong } from "../services/mapLocation.js";
+
+        // Initialize variables
+        let map;
+        let marker;
+        let circle;
+        let initialLat = 28;
+        let initialLong = 72;
+
+        // Initialize socket connection
+        var socket = io();
+
+        // Socket connection logging
+        socket.on('connect', () => {
+            console.log('Connected to server!');
+            console.log('Socket ID:', socket.id);
+        });
+
+        // Handle connection errors
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+
+        // Log all socket events
+        socket.onAny((eventName, ...args) => {
+            console.log('Received event:', eventName);
+            console.log('Event data:', args);
+        });
+
+        //------     // Handle incoming location updates
+        // socket.on('latLongFromServer', (data) => {
+        //     console.log('latLongFromServer event received!');
+        //     console.log('Data received:', data);
+
+        //     const { LAT, LONG } = data;
+        //     initialLat = LAT;
+        //     initialLong = LONG;
+
+        //     console.log('Updated coordinates:', initialLat, initialLong);
+
+        //     // Update map and markers
+        //     map.setView([initialLat, initialLong], 33);
+        //     marker.setLatLng([initialLat, initialLong]);
+        //     circle.setLatLng([initialLat, initialLong]);
+        // });
+
+
+        await fetch('/latLongForMap')
+            .then(response => response.json())
+            .then(data => {
+                initialLat = data.lat;
+                initialLong = data.long;
+                console.log("Latitude:", initialLat);
+                console.log("Longitude:", initialLong);
+            })
+            .catch(error => {
+                console.error("Error fetching lat/long:", error);
+            });
+
+
+        const volLat = sessionStorage.getItem('volLat');
+        const volLong = sessionStorage.getItem('volLong');
+
+        if (volLat && volLong) {
+            console.log(`Lat: ${volLat}, Long: ${volLong}`);
+            // Use these coordinates to display the marker on the map
+        } else {
+            console.log('No coordinates found');
+        }
+
+
+
+        // Initialize map
+        map = L.map('map', {
+            center: [initialLat, initialLong],
+            zoom: 33
+        });
+
+        // Add tile layer
+        var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+        osm.addTo(map);
+
+        // Add marker
+        var pin = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149059.png',
+            iconSize: [25, 41],          // Size of the icon
+            iconAnchor: [12, 41],        // Anchor point (position of the icon relative to the marker position)
+            popupAnchor: [1, -34],       // Popup position relative to the icon
+            shadowSize: [41, 41]
+        })
+        marker = L.marker([initialLat, initialLong], { icon: pin }).addTo(map)
+            .bindPopup('Your current location')
+            .openPopup();
+
+        // Add circle
+        circle = L.circle([initialLat, initialLong], {
+            radius: 2
+        }).addTo(map);
+
+
+        //volunteer's location
+        // var greenIcon = L.icon({
+        //     iconUrl: 'https://cdn-icons-png.flaticon.com/512/16001/16001361.png', // Optional: use a URL or a local image for a green dot
+        // iconSize: [25, 41],          // Size of the icon
+        // iconAnchor: [12, 41],        // Anchor point (position of the icon relative to the marker position)
+        // popupAnchor: [1, -34],       // Popup position relative to the icon
+        // shadowSize: [41, 41]         // Optional: size of the shadow (if you want one)
+        // });
+
+        // // Add the green dot marker to the map at volLat, volLong
+        // var greenDotMarker = L.marker([volLat, volLong], { icon: greenIcon }).addTo(map)
+        //     .bindPopup('Volunteer\'s Location')
+        //     .openPopup();
+        var greenCircleMarker = L.circleMarker([volLat, volLong], {
+            color: 'green',        // Marker color
+            radius: 8,             // Marker radius
+            fillColor: 'green',    // Fill color for the circle
+            fillOpacity: 1         // Fill opacity (1 is fully opaque)
+        }).addTo(map)
+            .bindPopup('Volunteer\'s Location')
+            .openPopup();
+
+
+    </script>
+</body>
+
+</html>
